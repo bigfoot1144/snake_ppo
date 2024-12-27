@@ -41,6 +41,9 @@ class SnakeEnv(Env):
         self.snake_path[0][0] = self.snake_head_y
         self.snake_path[0][1] = self.snake_head_x
 
+        self.episodic_reward = 0
+        self.episodic_length = 0
+
         #snake
         zero_indices = np.argwhere(self.state == 0)
         random_index = random.choice(zero_indices)
@@ -115,6 +118,10 @@ class SnakeEnv(Env):
                     self.apple_y = random_index[1]
                     self.apple_x = random_index[0]
 
+        self.episodic_reward += reward
+        self.episodic_length += 1
+        if terminated:
+            info["final_info"] = (self.episodic_reward, self.episodic_length)
         return self.state.flatten(), reward, terminated, truncated, info
 
     def close(self):
