@@ -8,12 +8,12 @@ SCORE_REWARD = 1
 WINNER_REWARD = 10
 
 class SnakeEnv(Env):
-    def __init__(self, render_mode="human"):
+    def __init__(self, seed=None, render_mode="human"):
         super(SnakeEnv, self).__init__()
 
         self.grid_size = 32
 
-        self.observation_space = spaces.Box(low=-1, high=1024, shape=[self.grid_size, self.grid_size], dtype=np.int16)
+        self.observation_space = spaces.Box(low=0, high=3, shape=[self.grid_size * self.grid_size], dtype=np.int16)
 
         self.action_space = spaces.Discrete(5)  # up, down, left, right, nothing
 
@@ -29,10 +29,10 @@ class SnakeEnv(Env):
         self.snake_head_y = self.grid_size // 2
         self.snake_direction = 0
 
-    def reset(self):
-        self.state = np.zeros((self.grid_size, self.grid_size))
-        self.snake_head_y = env.grid_size // 2
-        self.snake_head_x = env.grid_size // 2
+    def reset(self, seed=None):
+        self.state = np.zeros((self.grid_size, self.grid_size), dtype=np.int16)
+        self.snake_head_y = self.grid_size // 2
+        self.snake_head_x = self.grid_size // 2
         self.state[self.snake_head_y, self.snake_head_x] = 1
         self.snake_path = np.empty([self.grid_size * self.grid_size, 2], dtype=np.int32) # grid_size * grid_size, yx 
         self.snake_path.fill(-1)
@@ -47,7 +47,7 @@ class SnakeEnv(Env):
         self.apple_y = random_index[1]
         self.apple_x = random_index[0]
         self.state[random_index[0]][random_index[1]] = 3
-        return self.state, {}
+        return self.state.flatten(), {}
 
     def step(self, action):
         reward = 0
@@ -115,7 +115,7 @@ class SnakeEnv(Env):
                     self.apple_y = random_index[1]
                     self.apple_x = random_index[0]
 
-        return self.state, reward, terminated, truncated, info
+        return self.state.flatten(), reward, terminated, truncated, info
 
     def close(self):
         pygame.quit()
