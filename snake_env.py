@@ -4,18 +4,18 @@ from gymnasium import Env, spaces
 import random
 
 COLLISION_REWARD = -1
-SCORE_REWARD = 1
-WINNER_REWARD = 10
+SCORE_REWARD = 100
+WINNER_REWARD = 100
 
 class SnakeEnv(Env):
     def __init__(self, seed=None, render_mode="human"):
         super(SnakeEnv, self).__init__()
 
-        self.grid_size = 32
+        self.grid_size = 5
 
-        self.observation_space = spaces.Box(low=0, high=3, shape=[self.grid_size * self.grid_size], dtype=np.int16)
+        self.observation_space = spaces.Box(low=0, high=3, shape=[1,self.grid_size,self.grid_size], dtype=np.int16)
 
-        self.action_space = spaces.Discrete(5)  # up, down, left, right, nothing
+        self.action_space = spaces.Discrete(4)  # up, down, left, right, nothing
 
         self.render_mode = render_mode
         if self.render_mode == "human":
@@ -50,7 +50,7 @@ class SnakeEnv(Env):
         self.apple_y = random_index[1]
         self.apple_x = random_index[0]
         self.state[random_index[0]][random_index[1]] = 3
-        return self.state.flatten(), {}
+        return np.expand_dims(self.state, axis=0), {}
 
     def step(self, action):
         reward = 0
@@ -89,11 +89,11 @@ class SnakeEnv(Env):
             if self.state[self.snake_head_y][self.snake_head_x] == 3:
                 apple_found = True
                 self.snake_length += 1
-                
+            
             self.snake_index += 1 
             self.snake_path[((self.snake_index) % (self.grid_size * self.grid_size))][1] = self.snake_head_y
             self.snake_path[((self.snake_index) % (self.grid_size * self.grid_size))][0] = self.snake_head_x
-            
+
             self.state[self.snake_head_y][self.snake_head_x] = 2
             
             if(not apple_found):
@@ -102,11 +102,8 @@ class SnakeEnv(Env):
                 self.state[del_y][del_x] = 0
                 self.snake_path[((self.snake_index + 1) % (self.grid_size * self.grid_size)), 1] = -1
                 self.snake_path[((self.snake_index + 1) % (self.grid_size * self.grid_size)), 0] = -1
-                if self.snake_length > 1:
-                    next_box_y = self.snake_path[((self.snake_index - 1) % (self.grid_size * self.grid_size))][1]
-                    next_box_x = self.snake_path[((self.snake_index - 1) % (self.grid_size * self.grid_size))][0]
-                    self.state[next_box_y][next_box_x] = 1
             else:
+                reward = SCORE_REWARD
                 zero_indices = np.argwhere(self.state == 0)
                 if len(zero_indices) == 0:
                     print("WINNER")
@@ -117,12 +114,17 @@ class SnakeEnv(Env):
                     self.state[random_index[0]][random_index[1]] = 3
                     self.apple_y = random_index[1]
                     self.apple_x = random_index[0]
+            
+            if self.snake_length > 1:
+                next_box_y = self.snake_path[((self.snake_index - 1) % (self.grid_size * self.grid_size))][1]
+                next_box_x = self.snake_path[((self.snake_index - 1) % (self.grid_size * self.grid_size))][0]
+                self.state[next_box_y][next_box_x] = 1
 
         self.episodic_reward += reward
         self.episodic_length += 1
         if terminated:
             info["final_info"] = (self.episodic_reward, self.episodic_length)
-        return self.state.flatten(), reward, terminated, truncated, info
+        return np.expand_dims(self.state, axis=0), reward, terminated, truncated, info
 
     def close(self):
         pygame.quit()
@@ -147,10 +149,12 @@ class SnakeEnv(Env):
 
             for i in range(self.grid_size):
                 for j in range(self.grid_size):
-                    if self.state[i, j] > 0:
+                    if self.state[i, j] == 1:
                         pygame.draw.rect(self.screen, (0, 255, 0), (j * cell_size, i * cell_size, cell_size, cell_size))
-            
-            pygame.draw.rect(self.screen, (255, 0, 0), (self.apple_y * cell_size, self.apple_x * cell_size, cell_size, cell_size))
+                    elif self.state[i, j] == 2:
+                        pygame.draw.rect(self.screen, (0, 0, 255), (j * cell_size, i * cell_size, cell_size, cell_size))
+                    elif self.state[i, j] == 3:
+                        pygame.draw.rect(self.screen, (255, 0, 0), (j * cell_size, i * cell_size, cell_size, cell_size))
 
     def get_action(self):
         keys = pygame.key.get_pressed()
